@@ -733,7 +733,16 @@
       ".ns-overlay p{color:#d4f5ff;font-size:13px;margin:0}",
       ".ns-floor-reflection{position:absolute;z-index:1;pointer-events:none;opacity:.80;filter:blur(2.4px);-webkit-mask-image:linear-gradient(to bottom,rgba(0,0,0,.7),transparent 90%);mask-image:linear-gradient(to bottom,rgba(0,0,0,.7),transparent 90%)}",
       ".ns-touch{display:none}",
-      ".ns:focus-visible,.ns-btn:focus-visible,.ns-slider:focus-visible{outline:2px solid #fff;outline-offset:2px}",
+      ".ns:focus-visible,.ns-btn:focus-visible,.ns-slider:focus-visible,.ns-credits-btn:focus-visible,.ns-credits-close:focus-visible{outline:2px solid #fff;outline-offset:2px}",
+      ".ns-credits-btn{position:fixed;z-index:40;top:12px;right:12px;appearance:none;cursor:pointer;border:1px solid rgba(69,168,242,.72);border-radius:999px;padding:8px 14px;background:rgba(2,11,33,.92);box-shadow:0 0 9px rgba(0,183,255,.2);color:#dfedff;font:800 14px/1.1 Inter,system-ui,sans-serif;letter-spacing:.04em;}",
+      ".ns-credits-btn:hover{filter:brightness(1.35)}",
+      ".ns-credits{position:fixed;inset:0;z-index:50;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(1,5,18,.78);}",
+      ".ns-credits[hidden]{display:none !important}",
+      ".ns-credits-card{width:min(28rem,100%);max-height:min(84vh,560px);overflow:auto;background:#f7f9ff;color:#1c1917;border:4px solid #7ea2e8;border-radius:18px;padding:16px 18px 18px;box-shadow:0 14px 0 rgba(0,0,0,.28);text-align:center;user-select:text;}",
+      ".ns .ns-credits-card .ns-credits-name{margin:0 0 8px;font:700 1.15rem/1.3 Georgia,'Times New Roman',serif;color:#142033;text-transform:none;letter-spacing:0;}",
+      ".ns .ns-credits-card p{margin:0 0 8px;font:600 15px/1.45 'Segoe UI',system-ui,sans-serif;color:#1c1917;text-transform:none;letter-spacing:0;}",
+      ".ns .ns-credits-card a{color:#1d4ed8;text-decoration:underline;}",
+      ".ns .ns-credits-close{margin-top:6px;appearance:none;font:700 14px/1 'Segoe UI',system-ui,sans-serif;color:#fff8ea;background:#146b45;border:2px solid #e0b56a;border-radius:999px;padding:7px 14px;cursor:pointer;text-transform:none;letter-spacing:0;}",
       "@media(max-width:1220px){.ns-mid{grid-template-columns:360px minmax(0,1fr)}.ns-sidebar{padding:0 12px 12px;gap:7px}.ns-logo{max-width:340px}.ns-card{padding:10px}.ns-controls-list{gap:5px}.ns-top-row{grid-template-columns:98px 1fr}.ns-hold-card .ns-mini{width:63px;height:63px}}",
       "@media(max-width:860px){.ns{height:auto;min-height:100%;overflow:auto}.ns-mid{display:flex;flex-direction:column;min-height:100vh;height:auto}.ns-board-shell{order:1;min-height:100svh;height:100svh;padding:12px 4px 5px;overflow:hidden}.ns-sidebar{order:2;width:100%;max-width:100%;border-right:0;border-top:1px solid #0b8eb4;overflow:visible;padding:8px 12px 28px}.ns-logo{max-width:300px}.ns-brand-panel{display:block}.ns-logo{width:200px;margin:0 auto}.ns-well{transform:none}.ns-top-row{grid-template-columns:100px 1fr}.ns-touch{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);z-index:4;display:grid;grid-template-columns:repeat(3,1fr);gap:7px;width:min(95vw,400px);touch-action:none}.ns-touch .ns-btn{padding:13px 6px;background:rgba(2,13,32,.86);font-size:12px;touch-action:none}.ns-floor-reflection{display:none}}",
       "@media(max-width:420px){.ns-top-row{grid-template-columns:88px minmax(0,1fr)}.ns-card{padding:8px}.ns-card h2{font-size:11px}.ns-controls-list{grid-template-columns:1fr 1fr}.ns-next-card .ns-next-row{gap:3px}}"
@@ -915,6 +924,76 @@
     );
     controlsPanel.append(controlsHeading, controlsList);
 
+    const creditsBtn = document.createElement("button");
+    creditsBtn.type = "button";
+    creditsBtn.className = "ns-credits-btn";
+    creditsBtn.textContent = "Credits";
+    creditsBtn.setAttribute("data-credits", "");
+    creditsBtn.setAttribute("aria-haspopup", "dialog");
+    creditsBtn.setAttribute("aria-expanded", "false");
+    const creditsLayer = document.createElement("div");
+    creditsLayer.className = "ns-credits";
+    creditsLayer.hidden = true;
+    creditsLayer.setAttribute("data-credits", "");
+    const creditsCard = document.createElement("div");
+    creditsCard.className = "ns-credits-card";
+    creditsCard.setAttribute("role", "dialog");
+    creditsCard.setAttribute("aria-modal", "true");
+    creditsCard.setAttribute("aria-label", "Credits");
+    const creditsName = document.createElement("p");
+    creditsName.className = "ns-credits-name";
+    creditsName.textContent = "Travis MacDonald";
+    const creditsClose = document.createElement("button");
+    creditsClose.type = "button";
+    creditsClose.className = "ns-credits-close";
+    creditsClose.textContent = "Close";
+    function creditsLine(href, label) {
+      const p = document.createElement("p");
+      const a = document.createElement("a");
+      a.href = href;
+      a.textContent = label;
+      p.appendChild(a);
+      return p;
+    }
+    const creditsHope = document.createElement("p");
+    creditsHope.textContent = "Hope you like these. They were fun to make.";
+    const creditsUrge = document.createElement("p");
+    creditsUrge.textContent = "Use that urge to create. Building something you care about lasts longer than tearing something down. Enjoy these, then go make your own.";
+    creditsCard.append(
+      creditsName,
+      creditsLine("https://travisjmac.com", "https://travisjmac.com"),
+      creditsLine("mailto:travis@travisjmac.com", "travis@travisjmac.com"),
+      creditsHope,
+      creditsUrge,
+      creditsClose
+    );
+    creditsLayer.appendChild(creditsCard);
+    let creditsOpen = false;
+    function openCredits() {
+      creditsOpen = true;
+      creditsLayer.hidden = false;
+      creditsBtn.setAttribute("aria-expanded", "true");
+      creditsClose.focus();
+    }
+    function closeCredits() {
+      if (!creditsOpen) return;
+      creditsOpen = false;
+      creditsLayer.hidden = true;
+      creditsBtn.setAttribute("aria-expanded", "false");
+      creditsBtn.focus({ preventScroll: true });
+    }
+    creditsBtn.addEventListener("click", function (e) {
+      e.stopPropagation();
+      openCredits();
+    });
+    creditsClose.addEventListener("click", function (e) {
+      e.stopPropagation();
+      closeCredits();
+    });
+    creditsLayer.addEventListener("click", function (e) {
+      if (e.target === creditsLayer) closeCredits();
+    });
+
     holdPanel.append(head, topRow, scorePanel, musicPanel, controlsPanel);
 
     const boardShell = document.createElement("section");
@@ -978,7 +1057,7 @@
     keys.className = "ns-keys";
 
     mid.append(holdPanel, boardShell);
-    root.append(sky, blast, mid, keys);
+    root.append(sky, blast, mid, keys, creditsBtn, creditsLayer);
     el.replaceChildren(root);
     // Bind the one actual set of controls. The previous layout lost these listeners.
     pauseBtn.addEventListener("click", function () {
@@ -1056,6 +1135,17 @@
 
     function onKeyDown(event) {
       if (dead) return;
+      const inCreditsUi = !!(event.target && event.target.closest && event.target.closest("[data-credits]"));
+      if (creditsOpen) {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          closeCredits();
+        } else if (!inCreditsUi) {
+          event.preventDefault();
+        }
+        return;
+      }
+      if (inCreditsUi && event.key !== "Escape") return;
       if (event.target && /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName)) return;
       const action = actionOf(event);
       if (!action || !isOpen()) return;
