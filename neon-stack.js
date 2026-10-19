@@ -579,7 +579,7 @@
 
   function createMusic() {
     let ctx=null, master=null, analyser=null, wave=null, timer=null;
-    let muted=false, volume=.30, index=0, song=null, cursor=0, origin=0;
+    let muted=false, volume=.10, speed=.75, index=0, song=null, cursor=0, origin=0;
     const active=new Map(), programs=new Uint8Array(16);
     let failed=false;
     const noiseCache={};
@@ -613,10 +613,10 @@
     function choose(n){index=n;song=decodeMidi(SONGS[index].midi);cursor=0;programs.fill(0);if(ctx){allOff();origin=ctx.currentTime+.06;}}
     function schedule(){if(!ctx||ctx.state!=='running'||!song)return;
       let now=ctx.currentTime;
-      if(now-origin>=song.duration){choose(index);origin=ctx.currentTime+.06;now=ctx.currentTime;}
+      if(now-origin>=song.duration/speed){choose(index);origin=ctx.currentTime+.06;now=ctx.currentTime;}
       const horizon=now+.16;
-      while(cursor<song.events.length&&origin+song.events[cursor].time<horizon){
-        const e=song.events[cursor++],t=Math.max(now+.004,origin+e.time);
+      while(cursor<song.events.length&&origin+song.events[cursor].time/speed<horizon){
+        const e=song.events[cursor++],t=Math.max(now+.004,origin+e.time/speed);
         if(e.kind==='program')programs[e.ch]=e.value;
         if(e.kind==='on')tone(e.ch,e.note,e.velocity,t);
         if(e.kind==='off'){const key=e.ch+':'+e.note,voices=active.get(key);if(voices&&voices.length){release(voices.shift(),t);if(!voices.length)active.delete(key);}}
@@ -628,10 +628,11 @@
     }catch(e){failed=true;return;}}if(ctx.state==='suspended')ctx.resume();}
     function toggle(){muted=!muted;if(ctx)master.gain.setTargetAtTime(muted?0:volume,ctx.currentTime,.02);return muted;}
     function setVolume(n){volume=Math.max(0,Math.min(1,Number(n)));if(ctx)master.gain.setTargetAtTime(muted?0:volume,ctx.currentTime,.02);}
+    function setSpeed(n){const next=Math.max(.5,Math.min(1.25,Number(n)));if(next===speed)return;if(ctx){const position=Math.max(0,(ctx.currentTime-origin)*speed);allOff();origin=ctx.currentTime-position/next;}speed=next;}
     function random(){let n=index;if(SONGS.length>1)while(n===index)n=Math.floor(Math.random()*SONGS.length);choose(n);unlock();return SONGS[index].name;}
     function stop(){if(timer)clearInterval(timer);if(ctx){allOff();ctx.close();ctx=null;}}
     choose(0);
-    return {unlock,toggle,setVolume,random,stop,label,level,songName:()=>SONGS[index].name};
+    return {unlock,toggle,setVolume,setSpeed,random,stop,label,level,songName:()=>SONGS[index].name};
   }
 
   let fxSeed = 2463534242;
@@ -864,16 +865,16 @@
     volume.type = "range";
     volume.min = "0";
     volume.max = "100";
-    volume.value = "30";
+    volume.value = "10";
     volume.className = "ns-slider";
     volume.setAttribute("aria-label", "Music volume");
     const volumeValue = document.createElement("span");
     volumeValue.className = "ns-vol-value";
-    volumeValue.textContent = "30%";
+    volumeValue.textContent = "10%";
     volumeRow.append(soundIcon, volume, volumeValue);
     const volumeLabel = document.createElement("label");
     volumeLabel.className = "ns-vol-label";
-    volumeLabel.textContent = "Music volume 30%";
+    volumeLabel.textContent = "Music volume 10%";
     const actions = document.createElement("div");
     actions.className = "ns-actions";
     const pauseBtn = document.createElement("button");
@@ -893,7 +894,15 @@
     muteBtn.className = "ns-btn";
     muteBtn.textContent = "Mute";
     actions.append(pauseBtn, restartBtn, randomSong, muteBtn);
-    musicPanel.append(nowHead, songMeta, volumeRow, volumeLabel, actions);
+    const speedRow=document.createElement('label');speedRow.className='ns-volume-row';
+    const speedLabel=document.createElement('span');speedLabel.textContent='Base';
+    const speedInput=document.createElement('input');speedInput.type='range';speedInput.min='50';speedInput.max='125';speedInput.step='5';speedInput.value='75';speedInput.className='ns-slider';speedInput.setAttribute('aria-label','Music speed');
+    const speedValue=document.createElement('span');speedValue.className='ns-vol-value';speedValue.textContent='75%';
+    let musicLevel=1;
+    function updateMusicTempo(){const tempo=Math.min(125,Number(speedInput.value)+(musicLevel-1)*5);music.setSpeed(tempo/100);speedValue.textContent=tempo+'%';speedInput.title='Starting tempo '+speedInput.value+'%; current tempo '+tempo+'% at level '+musicLevel;}
+    speedInput.addEventListener('input',updateMusicTempo);
+    speedRow.append(speedLabel,speedInput,speedValue);
+    musicPanel.append(nowHead, songMeta, volumeRow, volumeLabel, speedRow, actions);
 
     const controlsPanel = document.createElement("section");
     controlsPanel.className = "ns-card ns-controls-card";
@@ -1570,6 +1579,7 @@
       root.dataset.score = String(snap.score);
       root.dataset.lines = String(snap.lines);
       root.dataset.level = String(snap.level);
+      musicLevel=snap.level;updateMusicTempo();
       root.dataset.audio = music.label();
       root.dataset.levelRms = music.level().toFixed(4);
       root.dataset.effect = (flash > 0.05 || shock || shards.length) ? "shockwave" : "";
