@@ -1,0 +1,387 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>How to play Neon Stack</title>
+<meta name="description" content="How to play Neon Stack: controls, scoring, and the line-clear boom.">
+<style>
+  :root {
+    --void: #05040c;
+    --ink: #07060f;
+    --cyan: #00f0ff;
+    --rim: #40dfff;
+    --magenta: #ff2bd6;
+    --text: #e5f8ff;
+    --muted: #c6e5ff;
+    --key: #071529;
+    --I: #00f0ff;
+    --O: #ffe600;
+    --T: #ff2bd6;
+    --S: #39ff14;
+    --Z: #ff3b3b;
+    --J: #2f6bff;
+    --L: #c24bff;
+  }
+
+  * { box-sizing: border-box; }
+
+  html { color-scheme: dark; }
+
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    background:
+      radial-gradient(ellipse 42% 36% at 12% 8%, rgba(0, 240, 255, 0.09), transparent 68%),
+      radial-gradient(ellipse 36% 32% at 96% 100%, rgba(255, 43, 214, 0.08), transparent 70%),
+      var(--void);
+    color: var(--text);
+    font-family: Bahnschrift, "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.45;
+  }
+
+  .page {
+    width: min(980px, calc(100% - 32px));
+    margin: 0 auto;
+    padding: 28px 0 40px;
+  }
+
+  .top {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 22px;
+  }
+
+  h1 {
+    margin: 0;
+    font-size: clamp(44px, 7vw, 72px);
+    font-weight: 700;
+    font-stretch: condensed;
+    letter-spacing: -0.03em;
+    line-height: 0.9;
+  }
+
+  h1 span:first-child { color: var(--cyan); }
+  h1 span:last-child { color: var(--magenta); }
+
+  .lede {
+    margin: 12px 0 0;
+    color: var(--muted);
+    font-size: 17px;
+  }
+
+  .lede span { display: block; }
+
+  .play {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 26px;
+    border: 1px solid #ed22e6;
+    border-radius: 10px;
+    background: linear-gradient(#43084f, #230a42);
+    box-shadow: inset 0 1px rgba(255, 255, 255, 0.16), 0 0 14px rgba(252, 37, 226, 0.28);
+    color: #f6e9ff;
+    font: 800 15px/1 Bahnschrift, "Segoe UI", system-ui, sans-serif;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    text-decoration: none;
+    transition: transform 180ms cubic-bezier(0.32, 0.72, 0, 1);
+  }
+
+  .play:hover { transform: translateY(-2px); }
+  .play:active { transform: scale(0.98); }
+  .play:focus-visible { outline: 2px solid #fff; outline-offset: 3px; }
+
+  .layout {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 36px;
+    align-items: start;
+  }
+
+  figure { margin: 0; }
+
+  .well {
+    position: relative;
+    width: min(232px, 70vw);
+    padding: 9px;
+    border: 2px solid var(--rim);
+    border-radius: 23px;
+    background: linear-gradient(120deg, rgba(6, 200, 255, 0.23), rgba(255, 22, 235, 0.22));
+    box-shadow:
+      0 0 0 2px rgba(23, 28, 132, 0.65),
+      0 0 14px #00caff,
+      0 0 28px rgba(0, 200, 255, 0.45),
+      0 0 22px rgba(255, 0, 232, 0.22);
+  }
+
+  .well::after {
+    content: "";
+    position: absolute;
+    inset: -2px;
+    border-radius: 23px;
+    border: 2px solid transparent;
+    border-right-color: #ff00e9;
+    border-bottom-color: #ff00e9;
+    pointer-events: none;
+  }
+
+  .screen {
+    position: relative;
+    aspect-ratio: 10 / 14;
+    border-radius: 12px;
+    overflow: hidden;
+    background: rgba(2, 6, 17, 0.94);
+  }
+
+  .grid {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    grid-template-rows: repeat(14, 1fr);
+    background-color: var(--ink);
+    background-image:
+      linear-gradient(to right, rgba(0, 240, 255, 0.12) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(0, 240, 255, 0.12) 1px, transparent 1px);
+    background-size: 10% calc(100% / 14);
+  }
+
+  .cell {
+    margin: 9%;
+    border-radius: 3px;
+    background:
+      linear-gradient(135deg, rgba(255, 255, 255, 0.55), rgba(13, 31, 61, 0.15) 34%, rgba(4, 9, 31, 0.35)),
+      var(--c);
+    box-shadow: 0 0 8px var(--c), inset 0 0 0 1px rgba(255, 255, 255, 0.45);
+  }
+
+  .I { --c: var(--I); }
+  .O { --c: var(--O); }
+  .T { --c: var(--T); }
+  .S { --c: var(--S); }
+  .Z { --c: var(--Z); }
+  .J { --c: var(--J); }
+  .L { --c: var(--L); }
+
+  .ghost {
+    margin: 12%;
+    border-radius: 3px;
+    background: transparent;
+    box-shadow: inset 0 0 0 2px var(--magenta), 0 0 8px rgba(255, 43, 214, 0.45);
+  }
+
+  .falling {
+    position: absolute;
+    left: 30%;
+    top: calc(100% / 14);
+    width: 30%;
+    height: calc(200% / 14);
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    animation: drop 2.6s step-end infinite;
+  }
+
+  .falling .cell { margin: 12%; }
+
+  @keyframes drop {
+    0%, 10% { transform: translateY(0); opacity: 1; }
+    12%, 22% { transform: translateY(50%); opacity: 1; }
+    24%, 34% { transform: translateY(100%); opacity: 1; }
+    36%, 46% { transform: translateY(150%); opacity: 1; }
+    48%, 58% { transform: translateY(200%); opacity: 1; }
+    60%, 70% { transform: translateY(250%); opacity: 1; }
+    72%, 88% { transform: translateY(300%); opacity: 1; }
+    90%, 100% { transform: translateY(300%); opacity: 0; }
+  }
+
+  .sheet h2 {
+    margin: 0 0 10px;
+    font-size: 15px;
+    font-weight: 750;
+    letter-spacing: 0.04em;
+    color: var(--cyan);
+  }
+
+  .keys {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .keys li {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 32px;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .keyset { display: flex; gap: 4px; flex: none; }
+
+  kbd {
+    min-width: 28px;
+    min-height: 28px;
+    padding: 2px 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #548bd6;
+    border-radius: 5px;
+    background: var(--key);
+    color: #e8fbff;
+    font: 800 13px/1 Bahnschrift, "Segoe UI", system-ui, sans-serif;
+  }
+
+  .note {
+    margin: 14px 0 0;
+    color: var(--muted);
+    font-size: 14px;
+  }
+
+  .scores {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 10px;
+    margin: 22px 0 0;
+    padding: 0;
+  }
+
+  .scores div {
+    padding-top: 10px;
+    border-top: 1px solid rgba(64, 223, 255, 0.35);
+  }
+
+  .scores b {
+    display: block;
+    font-size: 28px;
+    font-weight: 750;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: -0.03em;
+    line-height: 1;
+    color: #f2fbff;
+    text-shadow: 0 0 8px rgba(15, 219, 255, 0.45);
+  }
+
+  .scores span {
+    display: block;
+    margin-top: 4px;
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  .boom {
+    margin: 14px 0 0;
+    max-width: 62ch;
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  @media (max-width: 760px) {
+    .page { width: calc(100% - 32px); padding-top: 20px; }
+    .top { flex-direction: column; align-items: flex-start; gap: 16px; }
+    .layout { grid-template-columns: 1fr; justify-items: center; gap: 22px; }
+    .sheet { width: 100%; }
+    .scores b { font-size: 22px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .falling { animation: none; }
+    .play { transition: none; }
+  }
+</style>
+</head>
+<body>
+  <main class="page">
+    <header class="top">
+      <div>
+        <h1><span>Neon</span> <span>Stack</span></h1>
+        <p class="lede"><span>A 10 by 20 well.</span><span>Fill a row and it clears.</span></p>
+      </div>
+      <a class="play" href="neon-stack.html">Play</a>
+    </header>
+
+    <div class="layout">
+      <figure class="well">
+        <div class="screen" aria-hidden="true">
+          <div class="grid">
+            <i class="ghost" style="grid-row:8;grid-column:5"></i>
+            <i class="ghost" style="grid-row:9;grid-column:4"></i>
+            <i class="ghost" style="grid-row:9;grid-column:5"></i>
+            <i class="ghost" style="grid-row:9;grid-column:6"></i>
+
+            <i class="cell O" style="grid-row:11;grid-column:2"></i>
+            <i class="cell O" style="grid-row:11;grid-column:3"></i>
+            <i class="cell O" style="grid-row:12;grid-column:2"></i>
+            <i class="cell O" style="grid-row:12;grid-column:3"></i>
+            <i class="cell I" style="grid-row:11;grid-column:5"></i>
+            <i class="cell I" style="grid-row:11;grid-column:6"></i>
+            <i class="cell I" style="grid-row:11;grid-column:7"></i>
+            <i class="cell I" style="grid-row:11;grid-column:8"></i>
+            <i class="cell L" style="grid-row:11;grid-column:10"></i>
+            <i class="cell L" style="grid-row:12;grid-column:8"></i>
+            <i class="cell L" style="grid-row:12;grid-column:9"></i>
+            <i class="cell L" style="grid-row:12;grid-column:10"></i>
+
+            <i class="cell J" style="grid-row:13;grid-column:1"></i>
+            <i class="cell J" style="grid-row:14;grid-column:1"></i>
+            <i class="cell J" style="grid-row:14;grid-column:2"></i>
+            <i class="cell J" style="grid-row:14;grid-column:3"></i>
+            <i class="cell Z" style="grid-row:13;grid-column:4"></i>
+            <i class="cell Z" style="grid-row:13;grid-column:5"></i>
+            <i class="cell Z" style="grid-row:14;grid-column:5"></i>
+            <i class="cell Z" style="grid-row:14;grid-column:6"></i>
+            <i class="cell S" style="grid-row:13;grid-column:7"></i>
+            <i class="cell S" style="grid-row:13;grid-column:8"></i>
+            <i class="cell S" style="grid-row:14;grid-column:8"></i>
+            <i class="cell S" style="grid-row:14;grid-column:9"></i>
+          </div>
+          <div class="falling">
+            <i class="cell T" style="grid-row:1;grid-column:2"></i>
+            <i class="cell T" style="grid-row:2;grid-column:1"></i>
+            <i class="cell T" style="grid-row:2;grid-column:2"></i>
+            <i class="cell T" style="grid-row:2;grid-column:3"></i>
+          </div>
+        </div>
+      </figure>
+
+      <section class="sheet">
+        <h2>Controls</h2>
+        <ul class="keys">
+          <li><span class="keyset"><kbd>Left</kbd><kbd>Right</kbd></span> Move</li>
+          <li><span class="keyset"><kbd>Down</kbd></span> Soft drop</li>
+          <li><span class="keyset"><kbd>Space</kbd></span> Hard drop</li>
+          <li><span class="keyset"><kbd>Up</kbd><kbd>X</kbd></span> Rotate clockwise</li>
+          <li><span class="keyset"><kbd>Z</kbd><kbd>Ctrl</kbd></span> Counterclockwise</li>
+          <li><span class="keyset"><kbd>C</kbd></span> Hold</li>
+          <li><span class="keyset"><kbd>P</kbd></span> Pause</li>
+          <li><span class="keyset"><kbd>R</kbd></span> Restart</li>
+          <li><span class="keyset"><kbd>M</kbd></span> Mute</li>
+          <li><span class="keyset"><kbd>Esc</kbd></span> Quit</li>
+        </ul>
+        <p class="note">On a narrow screen the pad under the well is move, soft drop, rotate counterclockwise, hard drop, and hold. A ghost shows the hard-drop landing. Hold once, then wait until that piece locks.</p>
+      </section>
+    </div>
+
+    <dl class="scores">
+      <div><b>100</b><span>Single</span></div>
+      <div><b>300</b><span>Double</span></div>
+      <div><b>500</b><span>Triple</span></div>
+      <div><b>800</b><span>Nova</span></div>
+    </dl>
+    <p class="boom">Those points are for level 1. Multiply by the level. Soft drop is 1 point a cell. Hard drop is 2, and it locks. Every 10 lines the fall and the music speed up.</p>
+    <p class="boom">A clear plays a whoosh, then a boom. Two booms when several lines clear.</p>
+  </main>
+</body>
+</html>
