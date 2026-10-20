@@ -313,6 +313,7 @@
         clearingRows = rows;
         clearAcc = 0;
         status = "clearing";
+        if (options && typeof options.onClear === "function") options.onClear(rows.length);
         return;
       }
       award(0);
@@ -578,7 +579,7 @@
   }
 
   function createMusic() {
-    let ctx=null, master=null, analyser=null, wave=null, timer=null;
+    let ctx=null, master=null, analyser=null, wave=null, sfx=null, timer=null;
     let muted=false, volume=.10, speed=.75, index=0, song=null, cursor=0, origin=0;
     const active=new Map(), programs=new Uint8Array(16);
     let failed=false;
@@ -622,17 +623,86 @@
         if(e.kind==='off'){const key=e.ch+':'+e.note,voices=active.get(key);if(voices&&voices.length){release(voices.shift(),t);if(!voices.length)active.delete(key);}}
       }
     }
+    function noiseBuffer(){
+      if(noiseCache.buf&&noiseCache.rate===ctx.sampleRate)return noiseCache.buf;
+      const len=Math.floor(ctx.sampleRate*0.5),buf=ctx.createBuffer(1,len,ctx.sampleRate),data=buf.getChannelData(0);
+      for(let i=0;i<len;i++)data[i]=Math.random()*2-1;
+      noiseCache.buf=buf;noiseCache.rate=ctx.sampleRate;return buf;
+    }
+    function envGain(peak,when,attack,dur){
+      const g=ctx.createGain();
+      g.gain.setValueAtTime(0.0001,when);
+      g.gain.exponentialRampToValueAtTime(Math.max(0.001,peak),when+attack);
+      g.gain.exponentialRampToValueAtTime(0.0001,when+dur);
+      return g;
+    }
+    function blip(when,from,to){
+      const osc=ctx.createOscillator(),filter=ctx.createBiquadFilter(),g=envGain(0.18,when,0.01,0.07);
+      osc.type='square';
+      osc.frequency.setValueAtTime(from,when);
+      osc.frequency.exponentialRampToValueAtTime(to,when+0.068);
+      filter.type='bandpass';filter.Q.value=0.8;
+      filter.frequency.setValueAtTime(from,when);
+      filter.frequency.exponentialRampToValueAtTime(Math.max(80,to),when+0.068);
+      osc.connect(filter).connect(g).connect(sfx);
+      osc.start(when);osc.stop(when+0.08);
+    }
+    function whoosh(when){
+      const src=ctx.createBufferSource(),filter=ctx.createBiquadFilter(),g=envGain(0.24,when,0.028,0.14);
+      src.buffer=noiseBuffer();
+      filter.type='bandpass';filter.Q.value=5;
+      filter.frequency.setValueAtTime(360,when);
+      filter.frequency.exponentialRampToValueAtTime(2400,when+0.055);
+      filter.frequency.exponentialRampToValueAtTime(420,when+0.13);
+      src.connect(filter).connect(g).connect(sfx);
+      src.start(when);src.stop(when+0.15);
+      blip(when,740,320);
+      blip(when+0.072,480,210);
+    }
+    function boom(when,hz,peak){
+      const body=ctx.createOscillator(),sub=ctx.createOscillator(),src=ctx.createBufferSource(),low=ctx.createBiquadFilter();
+      const g=envGain(peak,when,0.008,0.2),sg=envGain(peak*0.55,when,0.012,0.22),ng=envGain(Math.min(0.28,peak*0.4),when,0.004,0.08);
+      const end=Math.max(26,hz*0.38);
+      body.type='sine';
+      body.frequency.setValueAtTime(hz,when);
+      body.frequency.exponentialRampToValueAtTime(end,when+0.18);
+      sub.type='sine';
+      sub.frequency.setValueAtTime(Math.max(28,hz*0.5),when);
+      sub.frequency.exponentialRampToValueAtTime(Math.max(22,end*0.5),when+0.2);
+      src.buffer=noiseBuffer();
+      low.type='lowpass';
+      low.frequency.setValueAtTime(220,when);
+      low.frequency.exponentialRampToValueAtTime(48,when+0.06);
+      body.connect(g).connect(sfx);
+      sub.connect(sg).connect(sfx);
+      src.connect(low).connect(ng).connect(sfx);
+      body.start(when);body.stop(when+0.21);
+      sub.start(when);sub.stop(when+0.23);
+      src.start(when);src.stop(when+0.08);
+    }
+    function lineClear(count){
+      const n=count|0;
+      if(n<1)return;
+      try{
+        unlock();
+        if(!ctx||failed||muted||!sfx)return;
+        const t=ctx.currentTime+0.012;
+        whoosh(t);
+        if(n===1)boom(t+0.145,96,0.7);
+        else{boom(t+0.13,90,0.55);boom(t+0.27,52,0.88);}
+      }catch(e){}
+    }
     function unlock(){if(!ctx){try{
-      const AC=globalThis.AudioContext||globalThis.webkitAudioContext;ctx=new AC();master=ctx.createGain();master.gain.value=muted?0:volume;analyser=ctx.createAnalyser();analyser.fftSize=256;wave=new Uint8Array(256);master.connect(analyser);analyser.connect(ctx.destination);
+      const AC=globalThis.AudioContext||globalThis.webkitAudioContext;ctx=new AC();master=ctx.createGain();master.gain.value=muted?0:volume;analyser=ctx.createAnalyser();analyser.fftSize=256;wave=new Uint8Array(256);sfx=ctx.createGain();sfx.gain.value=muted?0:1;master.connect(analyser);sfx.connect(analyser);analyser.connect(ctx.destination);
       choose(index);timer=setInterval(schedule,65);
     }catch(e){failed=true;return;}}if(ctx.state==='suspended')ctx.resume();}
-    function toggle(){muted=!muted;if(ctx)master.gain.setTargetAtTime(muted?0:volume,ctx.currentTime,.02);return muted;}
+    function toggle(){muted=!muted;if(ctx){const now=ctx.currentTime;master.gain.setTargetAtTime(muted?0:volume,now,.02);if(sfx)sfx.gain.setTargetAtTime(muted?0:1,now,.02);}return muted;}
     function setVolume(n){volume=Math.max(0,Math.min(1,Number(n)));if(ctx)master.gain.setTargetAtTime(muted?0:volume,ctx.currentTime,.02);}
     function setSpeed(n){const next=Math.max(.5,Math.min(1.25,Number(n)));if(next===speed)return;if(ctx){const position=Math.max(0,(ctx.currentTime-origin)*speed);allOff();origin=ctx.currentTime-position/next;}speed=next;}
     function random(){let n=index;if(SONGS.length>1)while(n===index)n=Math.floor(Math.random()*SONGS.length);choose(n);unlock();return SONGS[index].name;}
-    function stop(){if(timer)clearInterval(timer);if(ctx){allOff();ctx.close();ctx=null;}}
+    function stop(){if(timer)clearInterval(timer);if(ctx){allOff();ctx.close();ctx=null;}sfx=null;noiseCache.buf=null;}
     choose(0);
-    return {unlock,toggle,setVolume,setSpeed,random,stop,label,level,songName:()=>SONGS[index].name};
+    return {unlock,toggle,setVolume,setSpeed,random,stop,label,level,lineClear,songName:()=>SONGS[index].name};
   }
 
   let fxSeed = 2463534242;
@@ -651,8 +721,11 @@
     if (Array.isArray(globalThis.__NEON_FORCE_PIECES) && globalThis.__NEON_FORCE_PIECES.length) {
       preset = globalThis.__NEON_FORCE_PIECES.slice();
     }
-    const session = createSession(preset ? { pieces: preset } : undefined);
     const music = createMusic();
+    const sessionOptions = {};
+    if (preset) sessionOptions.pieces = preset;
+    sessionOptions.onClear = function (count) { music.lineClear(count); };
+    const session = createSession(sessionOptions);
     const ac = new AbortController();
     let dead = false;
     let raf = 0;
@@ -1689,7 +1762,10 @@
   };
 
   const testing = typeof process !== "undefined" && process.env && process.env.NEON_TEST === "1";
-  if (testing) globalThis.__NEON_CREATE__ = createSession;
+  if (testing) {
+    globalThis.__NEON_CREATE__ = createSession;
+    globalThis.__NEON_MUSIC__ = createMusic;
+  }
 
   function bootPlayer() {
     const body = document.body;
